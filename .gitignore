@@ -246,3 +246,32 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.gitignore.io/api/linux,python,windows,pycharm+all,visualstudiocode
+
+
+### Project Specific ###
+# Virtual environments inside repo
+marl_cv_env/
+venv/
+env/
+.env
+
+# Results, logs and sacred runs
+results/
+*.log
+
+# Model checkpoints
+*.th
+*.pt
+*.pth
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Generated experiment configs
+src/config/experiments/
+
+# Package info
+my_installed_packages.txt
+
+# StarCraft II
+3rdparty/

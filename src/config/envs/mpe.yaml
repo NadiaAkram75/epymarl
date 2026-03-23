@@ -1,0 +1,15 @@
+# Multi-Particle Environment - Cooperative Navigation
+env: "gymma"
+env_args:
+  time_limit: 25
+  key: "pettingzoo_mpe:simple_spread_v3"
+  pretrained_wrapper: null
+  pixel_obs: true
+  obs_size: 84
+n_agents: 3
+n_actions: 5
+obs_shape: [3, 84, 84]
+episode_limit: 25
+label: "mpe"
+common_reward: True
+reward_scalarisation: "sum"

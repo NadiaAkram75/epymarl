@@ -1,0 +1,6 @@
+# MPE (Multi-Particle Environments) configuration
+name: "mpe"
+env_key: "pz-mpe-simple-spread"
+time_limit: 25
+n_agents: 3
+description: "Simple Spread - 3 agents need to cover 3 landmarks"

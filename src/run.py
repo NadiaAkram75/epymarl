@@ -1,3 +1,7 @@
+print("="*50)
+print("DEBUG: run.py is being imported!")
+print("="*50)
+
 import datetime
 import os
 from os.path import dirname, abspath
@@ -20,17 +24,27 @@ from utils.timehelper import time_left, time_str
 
 
 def run(_run, _config, _log):
+    print("="*50)
+    print("DEBUG: Entered run.py's run function!")
+    print("="*50)
+    print(f"DEBUG: _run type: {type(_run)}")
+    print(f"DEBUG: _config keys: {list(_config.keys())}")
+    print(f"DEBUG: _log: {_log}")
+    
     # check args sanity
     _config = args_sanity_check(_config, _log)
 
     args = SN(**_config)
     args.device = "cuda" if args.use_cuda else "cpu"
+    print(f"DEBUG: args created, device: {args.device}")
+    
     assert test_alg_config_supports_reward(
         args
     ), "The specified algorithm does not support the general reward setup. Please choose a different algorithm or set `common_reward=True`."
 
     # setup loggers
     logger = Logger(_log)
+    print("DEBUG: Logger created")
 
     _log.info("Experiment Parameters:")
     experiment_params = pprint.pformat(_config, indent=4, width=1)
@@ -48,26 +62,34 @@ def run(_run, _config, _log):
     )
 
     args.unique_token = unique_token
+    print(f"DEBUG: unique_token: {unique_token}")
+    
     if args.use_tensorboard:
         tb_logs_direc = os.path.join(
             dirname(dirname(abspath(__file__))), "results", "tb_logs"
         )
         tb_exp_direc = os.path.join(tb_logs_direc, "{}").format(unique_token)
         logger.setup_tb(tb_exp_direc)
+        print(f"DEBUG: TensorBoard set up at {tb_exp_direc}")
 
     if args.use_wandb:
         logger.setup_wandb(
             _config, args.wandb_team, args.wandb_project, args.wandb_mode
         )
+        print("DEBUG: WandB set up")
 
     # sacred is on by default
     logger.setup_sacred(_run)
+    print("DEBUG: Sacred logger set up")
 
     # Run and train
+    print("DEBUG: About to call run_sequential")
     run_sequential(args=args, logger=logger)
+    print("DEBUG: run_sequential completed")
 
     # Finish logging
     logger.finish()
+    print("DEBUG: Logger finished")
 
     # Clean up after finishing
     print("Exiting Main")
@@ -96,14 +118,21 @@ def evaluate_sequential(args, runner):
 
 
 def run_sequential(args, logger):
+    print("="*50)
+    print("DEBUG: Entered run_sequential function!")
+    print("="*50)
+    
     # Init runner so we can get env info
+    print("DEBUG: Initializing runner...")
     runner = r_REGISTRY[args.runner](args=args, logger=logger)
+    print(f"DEBUG: Runner initialized: {type(runner)}")
 
     # Set up schemes and groups here
     env_info = runner.get_env_info()
     args.n_agents = env_info["n_agents"]
     args.n_actions = env_info["n_actions"]
     args.state_shape = env_info["state_shape"]
+    print(f"DEBUG: Environment info - agents: {args.n_agents}, actions: {args.n_actions}, state_shape: {args.state_shape}")
 
     # Default/Base scheme
     scheme = {
@@ -125,6 +154,7 @@ def run_sequential(args, logger):
     groups = {"agents": args.n_agents}
     preprocess = {"actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])}
 
+    print("DEBUG: Creating replay buffer...")
     buffer = ReplayBuffer(
         scheme,
         groups,
@@ -133,18 +163,25 @@ def run_sequential(args, logger):
         preprocess=preprocess,
         device="cpu" if args.buffer_cpu_only else args.device,
     )
+    print(f"DEBUG: Replay buffer created with size {args.buffer_size}")
 
     # Setup multiagent controller here
+    print("DEBUG: Initializing MAC (Multi-Agent Controller)...")
     mac = mac_REGISTRY[args.mac](buffer.scheme, groups, args)
+    print(f"DEBUG: MAC initialized: {type(mac)}")
 
     # Give runner the scheme
     runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
+    print("DEBUG: Runner setup complete")
 
     # Learner
+    print("DEBUG: Initializing learner...")
     learner = le_REGISTRY[args.learner](mac, buffer.scheme, logger, args)
+    print(f"DEBUG: Learner initialized: {type(learner)}")
 
     if args.use_cuda:
         learner.cuda()
+        print("DEBUG: Learner moved to CUDA")
 
     if args.checkpoint_path != "":
         timesteps = []
@@ -194,13 +231,19 @@ def run_sequential(args, logger):
     last_time = start_time
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
+    print(f"DEBUG: Starting training loop at t_env={runner.t_env}")
 
     while runner.t_env <= args.t_max:
         # Run for a whole episode at a time
+        print(f"DEBUG: Running episode at t_env={runner.t_env}")
         episode_batch = runner.run(test_mode=False)
+        print(f"DEBUG: Episode completed, batch shape: {episode_batch.shape if hasattr(episode_batch, 'shape') else 'unknown'}")
+        
         buffer.insert_episode_batch(episode_batch)
+        print("DEBUG: Episode batch inserted into buffer")
 
         if buffer.can_sample(args.batch_size):
+            print("DEBUG: Sampling from buffer")
             episode_sample = buffer.sample(args.batch_size)
 
             # Truncate batch to only filled timesteps
@@ -211,6 +254,7 @@ def run_sequential(args, logger):
                 episode_sample.to(args.device)
 
             learner.train(episode_sample, runner.t_env, episode)
+            print(f"DEBUG: Training step completed at t_env={runner.t_env}")
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
@@ -265,6 +309,7 @@ def run_sequential(args, logger):
 
     runner.close_env()
     logger.console_logger.info("Finished Training")
+    print("DEBUG: Training loop completed")
 
 
 def args_sanity_check(config, _log):

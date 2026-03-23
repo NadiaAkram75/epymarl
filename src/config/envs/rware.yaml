@@ -1,0 +1,15 @@
+# Robot Warehouse
+env: "gymma"
+env_args:
+  time_limit: 500
+  key: "rware:rware-tiny-2ag-v2"
+  pretrained_wrapper: null
+  pixel_obs: true
+  obs_size: 84
+n_agents: 2
+n_actions: 5
+obs_shape: [3, 84, 84]
+episode_limit: 500
+label: "rware"
+common_reward: True
+reward_scalarisation: "sum"

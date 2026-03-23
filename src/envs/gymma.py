@@ -36,12 +36,45 @@ class GymmaWrapper(MultiAgentEnv):
         reward_scalarisation,
         **kwargs,
     ):
-        self._env = gym.make(f"{key}", **kwargs)
+        print("="*50)
+        print("DEBUG: GymmaWrapper.__init__")
+        print("="*50)
+        print(f"DEBUG: key = {key}")
+        print(f"DEBUG: time_limit = {time_limit}")
+        print(f"DEBUG: seed = {seed}")
+        print(f"DEBUG: common_reward = {common_reward}")
+        print(f"DEBUG: reward_scalarisation = {reward_scalarisation}")
+        print(f"DEBUG: kwargs = {kwargs}")
+        
+        print(f"DEBUG: Attempting to create environment with key: '{key}'")
+        print(f"DEBUG: Full make string: '{key}'")
+        try:
+            import gymnasium as gym
+            import lbforaging
+            print("DEBUG: Imported gymnasium and lbforaging")
+            # Force registration of lbforaging environments
+            lbforaging.register_grid_envs()
+            print("DEBUG: Called lbforaging.register_grid_envs()")
+            print(f"DEBUG: Available environments before make: {[e for e in gym.envs.registry.keys() if 'Foraging' in e][:5]}...")
+            self._env = gym.make(f"{key}", **kwargs)
+            print(f"DEBUG: gym.make succeeded!")
+            print(f"DEBUG: environment created: {self._env}")
+        except Exception as e:
+            print(f"DEBUG: gym.make FAILED with error: {e}")
+            print(f"DEBUG: Error type: {type(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+        
         self._env = TimeLimit(self._env, max_episode_steps=time_limit)
+        print("DEBUG: TimeLimit wrapper applied")
+        
         self._env = FlattenObservation(self._env)
+        print("DEBUG: FlattenObservation wrapper applied")
 
         if pretrained_wrapper:
             self._env = getattr(pretrained, pretrained_wrapper)(self._env)
+            print(f"DEBUG: pretrained wrapper {pretrained_wrapper} applied")
 
         self.n_agents = self._env.unwrapped.n_agents
         self.episode_limit = time_limit
@@ -52,12 +85,16 @@ class GymmaWrapper(MultiAgentEnv):
         self.longest_observation_space = max(
             self._env.observation_space, key=lambda x: x.shape
         )
+        print(f"DEBUG: n_agents = {self.n_agents}")
+        print(f"DEBUG: longest_action_space = {self.longest_action_space}")
+        print(f"DEBUG: longest_observation_space = {self.longest_observation_space}")
 
         self._seed = seed
         try:
             self._env.unwrapped.seed(self._seed)
         except:
             self._env.reset(seed=self._seed)
+        print(f"DEBUG: seed set to {self._seed}")
 
         self.common_reward = common_reward
         if self.common_reward:
@@ -69,6 +106,7 @@ class GymmaWrapper(MultiAgentEnv):
                 raise ValueError(
                     f"Invalid reward_scalarisation: {reward_scalarisation} (only support 'sum' or 'mean')"
                 )
+        print("="*50)
 
     def _pad_observation(self, obs):
         return [

@@ -1,0 +1,6 @@
+# LBF (Level-Based Foraging) configuration
+name: "lbf"
+env_key: "Foraging-8x8-2p-3f-v3"
+time_limit: 50
+n_agents: 2
+description: "8x8 grid, 2 agents, 3 foods - classic foraging task"
