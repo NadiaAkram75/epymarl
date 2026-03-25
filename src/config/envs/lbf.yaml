@@ -1,14 +1,11 @@
-# Level-Based Foraging
+# Level-Based Foraging - Phase 1 (state vector observations)
 env: "gymma"
 env_args:
   time_limit: 500
   key: "lbforaging:Foraging-8x8-2p-2f-v3"
   pretrained_wrapper: null
-  pixel_obs: true
-  obs_size: 84
 n_agents: 2
 n_actions: 6
-obs_shape: [3, 84, 84]
 episode_limit: 500
 label: "lbf"
 common_reward: True
