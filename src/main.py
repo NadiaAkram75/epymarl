@@ -20,7 +20,7 @@ from utils.logging import get_logger
 from run import run
 
 SETTINGS["CAPTURE_MODE"] = (
-    "fd"  # set to "no" if you want to see stdout/stderr in console
+    "sys"  # set to "no" if you want to see stdout/stderr in console
 )
 logger = get_logger()
 
