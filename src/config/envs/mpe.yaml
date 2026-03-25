@@ -1,0 +1,21 @@
+# Multi-Particle Environment — Cooperative Navigation
+# Environment: simple_spread, 3 agents
+# Reference: Lowe et al., 2017
+env: "gymma"
+env_args:
+  key: "pz-mpe-simple-spread-v3"
+  time_limit: 25
+  pretrained_wrapper: null
+n_agents: 3
+n_actions: 5
+episode_limit: 25
+label: "mpe"
+common_reward: True
+reward_scalarisation: "sum"
+test_greedy: True
+test_nepisode: 20
+test_interval: 10000
+log_interval: 10000
+runner_log_interval: 10000
+learner_log_interval: 10000
+t_max: 2000000

@@ -1,0 +1,21 @@
+# Level-Based Foraging — Vector Observation Baseline
+# Environment: 8x8 grid, 2 agents, 2 food items
+# Reference: Christianos et al., 2020
+env: "gymma"
+env_args:
+  key: "lbforaging:Foraging-8x8-2p-2f-v3"
+  time_limit: 500
+  pretrained_wrapper: null
+n_agents: 2
+n_actions: 6
+episode_limit: 500
+label: "lbf"
+common_reward: True
+reward_scalarisation: "sum"
+test_greedy: True
+test_nepisode: 20
+test_interval: 10000
+log_interval: 10000
+runner_log_interval: 10000
+learner_log_interval: 10000
+t_max: 2000000

@@ -1,0 +1,21 @@
+# Robot Warehouse — Vector Observation Baseline
+# Environment: tiny warehouse, 2 agents
+# Reference: Christianos et al., 2020
+env: "gymma"
+env_args:
+  key: "rware:rware-tiny-2ag-v1"
+  time_limit: 500
+  pretrained_wrapper: null
+n_agents: 2
+n_actions: 5
+episode_limit: 500
+label: "rware"
+common_reward: True
+reward_scalarisation: "sum"
+test_greedy: True
+test_nepisode: 20
+test_interval: 10000
+log_interval: 10000
+runner_log_interval: 10000
+learner_log_interval: 10000
+t_max: 2000000
