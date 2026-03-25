@@ -3,7 +3,7 @@
 # Reference: Christianos et al., 2020
 env: "gymma"
 env_args:
-  key: "rware:rware-tiny-2ag-v1"
+  key: "rware:rware-tiny-2ag-v2"
   time_limit: 500
   pretrained_wrapper: null
 n_agents: 2
