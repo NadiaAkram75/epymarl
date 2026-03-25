@@ -3,8 +3,13 @@ import sys
 
 from .multiagentenv import MultiAgentEnv
 from .gymma import GymmaWrapper
-from .smaclite_wrapper import SMACliteWrapper
-
+try:
+    from .smaclite_wrapper import SMACliteWrapper
+except ModuleNotFoundError:
+    import warnings
+    warnings.warn(
+        "smaclite is not installed, StarCraft environments will not be available."
+    )
 
 if sys.platform == "linux":
     os.environ.setdefault(
