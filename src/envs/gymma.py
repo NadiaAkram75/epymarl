@@ -2,13 +2,20 @@ from collections.abc import Iterable
 import warnings
 
 import gymnasium as gym
-from gymnasium.spaces import flatdim
+from gymnasium.spaces import flatdim, Discrete, Box
 from gymnasium.wrappers import TimeLimit
 import numpy as np
 
 from .multiagentenv import MultiAgentEnv
 from .wrappers import FlattenObservation
 import envs.pretrained as pretrained  # noqa
+
+try:
+    import overcooked_ai_py  # noqa — registers Overcooked-v0 in gymnasium
+except ImportError:
+    warnings.warn(
+        "overcooked_ai_py is not installed, Overcooked environments will not be available!"
+    )
 
 try:
     from .pz_wrapper import PettingZooWrapper  # noqa
@@ -36,28 +43,55 @@ class GymmaWrapper(MultiAgentEnv):
         reward_scalarisation,
         **kwargs,
     ):
-        self._env = gym.make(f"{key}", **kwargs)
-        self._env = TimeLimit(self._env, max_episode_steps=time_limit)
-        self._env = FlattenObservation(self._env)
+        if "Overcooked" in key:
+            from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+            from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, Overcooked
+
+            layout_name = kwargs.get("layout_name", "cramped_room")
+            mdp = OvercookedGridworld.from_layout_name(layout_name)
+            base_env = OvercookedEnv.from_mdp(mdp, horizon=time_limit)
+            featurize_fn = lambda state: base_env.lossless_state_encoding_mdp(state)
+            self._env = Overcooked(base_env=base_env, featurize_fn=featurize_fn)
+            self._is_overcooked = True
+        else:
+            self._env = gym.make(f"{key}", **kwargs)
+            self._is_overcooked = False
+
+        if not self._is_overcooked:
+            self._env = TimeLimit(self._env, max_episode_steps=time_limit)
+            self._env = FlattenObservation(self._env)
 
         if pretrained_wrapper:
             self._env = getattr(pretrained, pretrained_wrapper)(self._env)
 
-        self.n_agents = self._env.unwrapped.n_agents
+        if self._is_overcooked:
+            self.n_agents = 2
+            n_actions = self._env.unwrapped.action_space.n
+            single_obs_size = int(np.array(self._env.reset()["both_agent_obs"][0]).flatten().shape[0])
+            self.longest_action_space = Discrete(n_actions)
+            self.longest_observation_space = Box(
+                low=0.0,
+                high=float("inf"),
+                shape=(single_obs_size,),
+                dtype=np.float32,
+            )
+        else:
+            self.n_agents = self._env.unwrapped.n_agents
+            self.longest_action_space = max(self._env.action_space, key=lambda x: x.n)
+            self.longest_observation_space = max(
+                self._env.observation_space, key=lambda x: x.shape
+            )
+
         self.episode_limit = time_limit
         self._obs = None
         self._info = None
 
-        self.longest_action_space = max(self._env.action_space, key=lambda x: x.n)
-        self.longest_observation_space = max(
-            self._env.observation_space, key=lambda x: x.shape
-        )
-
         self._seed = seed
-        try:
-            self._env.unwrapped.seed(self._seed)
-        except:
-            self._env.reset(seed=self._seed)
+        if not self._is_overcooked:
+            try:
+                self._env.unwrapped.seed(self._seed)
+            except:
+                self._env.reset(seed=self._seed)
 
         self.common_reward = common_reward
         if self.common_reward:
@@ -69,6 +103,10 @@ class GymmaWrapper(MultiAgentEnv):
                 raise ValueError(
                     f"Invalid reward_scalarisation: {reward_scalarisation} (only support 'sum' or 'mean')"
                 )
+
+    def _split_overcooked_obs(self, obs):
+        """both_agent_obs is already a list of per-agent observations."""
+        return [np.array(o).flatten() for o in obs]
 
     def _pad_observation(self, obs):
         return [
@@ -84,7 +122,13 @@ class GymmaWrapper(MultiAgentEnv):
     def step(self, actions):
         """Returns obss, reward, terminated, truncated, info"""
         actions = [int(a) for a in actions]
-        obs, reward, done, truncated, self._info = self._env.step(actions)
+        if self._is_overcooked:
+            obs_dict, reward, done, _ = self._env.step(actions)
+            obs = self._split_overcooked_obs(obs_dict["both_agent_obs"])
+            self._info = {}
+            truncated = False
+        else:
+            obs, reward, done, truncated, self._info = self._env.step(actions)
         self._obs = self._pad_observation(obs)
 
         if self.common_reward and isinstance(reward, Iterable):
@@ -104,7 +148,7 @@ class GymmaWrapper(MultiAgentEnv):
 
     def get_obs_agent(self, agent_id):
         """Returns observation for agent_id"""
-        raise self._obs[agent_id]
+        return self._obs[agent_id]
 
     def get_obs_size(self):
         """Returns the shape of the observation"""
@@ -128,18 +172,22 @@ class GymmaWrapper(MultiAgentEnv):
 
     def get_avail_agent_actions(self, agent_id):
         """Returns the available actions for agent_id"""
-        valid = flatdim(self._env.action_space[agent_id]) * [1]
+        valid = flatdim(self.longest_action_space) * [1]
         invalid = [0] * (self.longest_action_space.n - len(valid))
         return valid + invalid
 
     def get_total_actions(self):
         """Returns the total number of actions an agent could ever take"""
-        # TODO: This is only suitable for a discrete 1 dimensional action space for each agent
         return flatdim(self.longest_action_space)
 
     def reset(self, seed=None, options=None):
         """Returns initial observations and info"""
-        obs, info = self._env.reset(seed=seed, options=options)
+        if self._is_overcooked:
+            result = self._env.reset()
+            obs = self._split_overcooked_obs(result["both_agent_obs"])
+            info = {}
+        else:
+            obs, info = self._env.reset(seed=seed, options=options)
         self._obs = self._pad_observation(obs)
         return self._obs, info
 

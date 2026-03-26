@@ -1,0 +1,24 @@
+# Overcooked — Cooperative Cooking
+# Environment: cramped_room layout, 2 agents
+# Reference: Carroll et al., 2019
+env: "gymma"
+env_args:
+  key: "Overcooked-v0"
+  layout_name: "cramped_room"
+  time_limit: 400
+  pretrained_wrapper: null
+n_agents: 2
+n_actions: 6
+episode_limit: 400
+label: "overcooked"
+common_reward: True
+reward_scalarisation: "sum"
+test_greedy: True
+test_nepisode: 20
+test_interval: 10000
+log_interval: 10000
+runner_log_interval: 10000
+learner_log_interval: 10000
+t_max: 2000000
+buffer_size: 32
+batch_size: 8
