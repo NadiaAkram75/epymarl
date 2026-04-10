@@ -11,7 +11,8 @@ from .wrappers import FlattenObservation
 import envs.pretrained as pretrained  # noqa
 
 try:
-    import overcooked_ai_py  # noqa — registers Overcooked-v0 in gymnasium
+    from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+    from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, Overcooked
 except ImportError:
     warnings.warn(
         "overcooked_ai_py is not installed, Overcooked environments will not be available!"
@@ -44,18 +45,18 @@ class GymmaWrapper(MultiAgentEnv):
         **kwargs,
     ):
         if "Overcooked" in key:
-            from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
-            from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, Overcooked
-
             layout_name = kwargs.get("layout_name", "cramped_room")
+            self._use_shaped_rewards = kwargs.get("use_shaped_rewards", False)
             mdp = OvercookedGridworld.from_layout_name(layout_name)
             base_env = OvercookedEnv.from_mdp(mdp, horizon=time_limit)
-            featurize_fn = lambda state: base_env.lossless_state_encoding_mdp(state)
-            self._env = Overcooked(base_env=base_env, featurize_fn=featurize_fn)
+            featurize_fn = lambda mdp, state: base_env.lossless_state_encoding_mdp(state)
+            self._env = Overcooked()
+            self._env.custom_init(base_env=base_env, featurize_fn=featurize_fn)
             self._is_overcooked = True
         else:
             self._env = gym.make(f"{key}", **kwargs)
             self._is_overcooked = False
+            self._use_shaped_rewards = False
 
         if not self._is_overcooked:
             self._env = TimeLimit(self._env, max_episode_steps=time_limit)
@@ -66,7 +67,7 @@ class GymmaWrapper(MultiAgentEnv):
 
         if self._is_overcooked:
             self.n_agents = 2
-            n_actions = self._env.unwrapped.action_space.n
+            n_actions = self._env.action_space.n
             single_obs_size = int(np.array(self._env.reset()["both_agent_obs"][0]).flatten().shape[0])
             self.longest_action_space = Discrete(n_actions)
             self.longest_observation_space = Box(
@@ -123,8 +124,10 @@ class GymmaWrapper(MultiAgentEnv):
         """Returns obss, reward, terminated, truncated, info"""
         actions = [int(a) for a in actions]
         if self._is_overcooked:
-            obs_dict, reward, done, _ = self._env.step(actions)
+            obs_dict, reward, done, env_info = self._env.step(actions)
             obs = self._split_overcooked_obs(obs_dict["both_agent_obs"])
+            if self._use_shaped_rewards and isinstance(env_info, dict) and "shaped_r_by_agent" in env_info:
+                reward = reward + sum(env_info["shaped_r_by_agent"])
             self._info = {}
             truncated = False
         else:
