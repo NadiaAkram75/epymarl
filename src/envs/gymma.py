@@ -54,7 +54,12 @@ class GymmaWrapper(MultiAgentEnv):
             self._env.custom_init(base_env=base_env, featurize_fn=featurize_fn)
             self._is_overcooked = True
         else:
-            self._env = gym.make(f"{key}", **kwargs)
+            # MPE requires render_mode='rgb_array' at construction time
+            # for pixel observations to work (Gymnasium API requirement)
+            if any(k in key.lower() for k in ["mpe", "spread", "simple", "pz-mpe"]):
+                self._env = gym.make(f"{key}", render_mode="rgb_array", **kwargs)
+            else:
+                self._env = gym.make(f"{key}", **kwargs)
             self._is_overcooked = False
             self._use_shaped_rewards = False
 
